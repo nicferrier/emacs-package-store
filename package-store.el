@@ -45,6 +45,7 @@
 
 ;;; Code:
 
+(require 'cl)
 (require 'ert)
 
 ;;;###autoload
@@ -76,6 +77,15 @@ production function for the url cache:
   "Is the network disconnected?")
 
 ;;;###autoload
+(defun toggle-package-store-connected (&optional arg)
+  "Toggle package network downloads on or off."
+  (interactive "P")
+  (setq package-store-disconnected
+        (if (null arg)
+            (not package-store-disconnected)
+            (> (prefix-numeric-value arg) 0))))
+
+;;;###autoload
 (defun package-store-url-cache-create-filename-package (url)
   "A url cache file namer.
 
@@ -97,6 +107,7 @@ This depends on the special variables
                                          "\\.")))))
              (dname (file-name-directory url-file-name))
              (ext (file-name-extension url-file-name)))
+        (message "package-store url: %s" url)
         (and dname
              (expand-file-name
               (concat
@@ -144,7 +155,13 @@ Downloads are cached to `package-store-cache-dir'."
              (package-store-cache-package-version version))
         (if package-store-disconnected
             (flet ((url-retrieve-synchronously (url)
-                     (url-fetch-from-cache url)))
+                     ;; STUPID STUPID URL - this is just to fix the
+                     ;; bad cache handling
+                     (with-current-buffer (url-fetch-from-cache url)
+                       (goto-char (point-min))
+                       (re-search-forward "\n\n" nil t)
+                       (setq url-http-end-of-headers (point))
+                       (current-buffer))))
               ad-do-it)
             ;; Else
             ad-do-it))
@@ -170,7 +187,13 @@ Downloads are cached to `package-store-cache-dir'."
              (package-store-cache-package-version version))
         (if package-store-disconnected
             (flet ((url-retrieve-synchronously (url)
-                     (url-fetch-from-cache url)))
+                     ;; STUPID STUPID URL - this is just to fix the
+                     ;; bad cache handling
+                     (with-current-buffer (url-fetch-from-cache url)
+                       (goto-char (point-min))
+                       (re-search-forward "\n\n" nil t)
+                       (setq url-http-end-of-headers (point))
+                       (current-buffer))))
               ad-do-it)
             ;; Else
             ad-do-it))
