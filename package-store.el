@@ -45,10 +45,84 @@
 
 ;;; Code:
 
+(require 'ert)
+
+;;;###autoload
 (defcustom package-store-cache-dir
   (concat user-emacs-directory "package-cache")
   "The directory to store downloaded packages."
-  :type 'directory)
+  :type 'directory
+  :group 'package)
+
+(defvar package-store-cache-package-name
+  nil
+  "Special variable declaration for the package name.
+
+This is used to communicate the package name to the name
+production function for the url cache:
+`package-store-url-cache-create-filename-package'")
+
+(defvar package-store-cache-package-version
+  nil
+  "Special variable declaration for the package version.
+
+This is used to communicate the package version to the name
+production function for the url cache:
+`package-store-url-cache-create-filename-package'")
+
+;;;###autoload
+(defvar package-store-disconnected
+  nil
+  "Is the network disconnected?")
+
+;;;###autoload
+(defun package-store-url-cache-create-filename-package (url)
+  "A url cache file namer.
+
+This depends on the special variables
+`package-store-cache-package-name' and
+`package-store-cache-package-version'."
+  (if url
+      (let* ((package-name "test")
+             (package-version "0.9.9")
+             (urlobj (url-generic-parse-url url))
+             (url-file-name (url-filename urlobj))
+             (protocol (url-type urlobj))
+             (hostname (url-host urlobj))
+             (host-components
+              (cons (or protocol "file")
+                    (nreverse
+                     (delq nil
+                           (split-string (or hostname "localhost")
+                                         "\\.")))))
+             (dname (file-name-directory url-file-name))
+             (ext (file-name-extension url-file-name)))
+        (and dname
+             (expand-file-name
+              (concat
+               (mapconcat 'identity host-components "/")
+               (file-name-as-directory dname)
+               (file-name-as-directory
+                (if (symbolp package-store-cache-package-name)
+                    (symbol-name package-store-cache-package-name)
+                    package-store-cache-package-name))
+               package-store-cache-package-version
+               "." ext)
+              url-cache-directory)))))
+
+(ert-deftest package-store-url-cache-create-filename-package ()
+  "Test the cache naming function."
+  (let* ((package-store-cache-dir "/home/packagestore/.emacs.d/packagecache")
+         (package-store-cache-package-name "eldoc")
+         (package-store-cache-package-version "0.9.9")
+         (url-cache-directory package-store-cache-dir))
+    (should
+     (equal
+      (package-store-url-cache-create-filename-package
+       "http://marmalade-repo.org/package/eldoc-0.9.9.tar")
+      (concat "/home/packagestore/.emacs.d"
+              "/packagecache/http/org/marmalade-repo"
+              "/package/eldoc/0.9.9.tar")))))
 
 ;;;###autoload
 (defadvice package-download-tar (around
@@ -57,13 +131,23 @@
   "Turn on caching around tar downloads.
 
 Downloads are cached to `package-store-cache-dir'."
+  ;; the normal api is (package-download-tar NAME VERSION)
   (if (and
        package-store-cache-dir
        (file-exists-p package-store-cache-dir)
        (file-directory-p package-store-cache-dir))
-      (let ((url-automatic-caching t)
-            (url-cache-directory package-store-cache-dir))
-        ad-do-it)
+      (let* ((url-automatic-caching t)
+             (url-cache-directory package-store-cache-dir)
+             (url-cache-creation-function
+              'package-store-url-cache-create-filename-package)
+             (package-store-cache-package-name name)
+             (package-store-cache-package-version version))
+        (if package-store-disconnected
+            (flet ((url-retrieve-synchronously (url)
+                     (url-fetch-from-cache url)))
+              ad-do-it)
+            ;; Else
+            ad-do-it))
       ad-do-it))
 
 ;;;###autoload
@@ -73,13 +157,23 @@ Downloads are cached to `package-store-cache-dir'."
   "Turn on caching around tar downloads.
 
 Downloads are cached to `package-store-cache-dir'."
+  ;; the normal API is (package-download-single NAME VERSION DESC REQUIRES)
   (if (and
        package-store-cache-dir
        (file-exists-p package-store-cache-dir)
        (file-directory-p package-store-cache-dir))
-      (let ((url-automatic-caching t)
-            (url-cache-directory package-store-cache-dir))
-        ad-do-it)
+      (let* ((url-automatic-caching t)
+             (url-cache-directory package-store-cache-dir)
+             (url-cache-creation-function
+              'package-store-url-cache-create-filename-package)
+             (package-store-cache-package-name name)
+             (package-store-cache-package-version version))
+        (if package-store-disconnected
+            (flet ((url-retrieve-synchronously (url)
+                     (url-fetch-from-cache url)))
+              ad-do-it)
+            ;; Else
+            ad-do-it))
       ad-do-it))
 
 (provide 'package-store)
