@@ -1,0 +1,31 @@
+
+* what?
+** a personal archive of packages
+** a directory structure
+*** in your ~/.emacs.d?
+** stores all the packages you download
+** in raw form
+
+* why?
+** so you can keep a package store around of everything you use
+** back it up, for example
+
+* how
+** package--with-work-buffer does the download for the package
+** that's a macro
+** but we have
+*** package-download-tar
+*** package-download-single
+** which both use it
+** url-retrieve-synchronously is used to retrieve
+** so advise those 2 functions with something that sets
+*** url-cache-directory
+** to the package cache dir
+
+* retrieval?
+** how to know when we are disconnected?
+** url-fetch-from-cache can fetch from cache
+*** needs to access the args
+**** that package-download-tar passes to package--with-work-buffer
+** could we flet url-retrieve-synchronously in the advice?
+*** that gets the url
