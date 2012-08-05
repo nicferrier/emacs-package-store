@@ -5,7 +5,7 @@
 ;; Author: Nic Ferrier <nferrier@ferrier.me.uk>
 ;; Maintainer: Nic Ferrier <nferrier@ferrier.me.uk>
 ;; Created: 17th July 2012
-;; Version: 0.2
+;; Version: 0.3
 ;; Keywords: lisp, http, hypermedia
 
 ;; This file is NOT part of GNU Emacs.
@@ -219,6 +219,7 @@ Returns the results of the FN as a list."
                                (funcall fn f))))))))
         res))))
 
+;;;###autoload
 (defun package-load-all (filename)
   "Load all the files in a package."
   (interactive "Gfile list:")
