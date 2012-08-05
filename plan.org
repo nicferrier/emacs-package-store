@@ -29,3 +29,26 @@
 **** that package-download-tar passes to package--with-work-buffer
 ** could we flet url-retrieve-synchronously in the advice?
 *** that gets the url
+
+* issues
+** doesn't work because
+*** the package archive is not cached
+**** could just try and copy the archive from the elpa near the package-store
+**** or could try and cache that as well
+**** function package--download-one-archive
+***** does the download and needs to be cached
+*** url doesn't detect network down
+**** we could detect this:
+***** url-http (url-http.el) calls
+****** url-http-find-free-connection makes the connection
+***** and on nil return errors
+****** "Could not create connection to host:port"
+**** we could advise url-http to catch the error
+***** and then try again with the disconnect mode turned on
+
+* other ideas
+** this idea from the HN thread
+*** http://news.ycombinator.com/item?id=4278704
+*** keep the installed packages as a list in customize
+*** then you can install the packages you want just by having access to the customize value
+
